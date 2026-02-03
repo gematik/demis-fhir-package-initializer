@@ -1,0 +1,43 @@
+vulnerabilities:
+  - id: CVE-2025-69419
+    expired_at: 2026-03-01
+    statement: BaseImage CVE, not fixable
+  - id: CVE-2025-15467
+    expired_at: 2026-03-01
+    statement: BaseImage CVE, not fixable
+  - id: CVE-2026-21932
+    expired_at: 2026-03-01
+    statement: BaseImage CVE, not fixable
+  - id: CVE-2026-21945
+    expired_at: 2026-03-01
+    statement: BaseImage CVE, not fixable
+
+misconfigurations:
+  - id: KSV011
+    statement: Runs with UID <= 10000 - User is 10000 in Dockerfile too
+  - id: KSV015
+    statement: Runs with UID <= 10000 - User is 10000 in Dockerfile too
+  - id: KSV016
+    statement: Runs with UID <= 10000 - User is 10000 in Dockerfile too
+  - id: KSV020
+    statement: Runs with UID <= 10000 - User is 10000 in Dockerfile too
+  - id: KSV021
+    statement: Runs with UID <= 10000 - User is 10000 in Dockerfile too
+  - id: KSV027
+    statement: Non-default /proc masks set - Not detected by Trivy
+  - id: KSV039
+    statement: limit range usage
+  - id: KSV040
+    statement: resource quota usage
+  - id: KSV110
+    statement: False Positive Namespace coming from stage-config
+  - id: AVD-DS-0026
+    statement: This is a short lived batch job, not a long running service. No healthcheck needed.
+
+# Ignore single packages is temporarily not supported from BaseImage
+licenses:
+  - id: GPL-2.0-only
+  - id: GPL-2.0-or-later
+  - id: LGPL-2.1-or-later
+  - id: MPL-2.0
+  - id: GPL-2.0-with-classpath-exception

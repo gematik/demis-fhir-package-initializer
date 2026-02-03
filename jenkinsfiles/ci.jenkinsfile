@@ -1,0 +1,9 @@
+@Library(['gematik-jenkins-shared-library','demis-jenkins-shared-library']) _
+pipelineCiExternalServices {
+    DEFAULT_BRANCH_NAME = 'main'
+    IMAGE_NAME = 'fhir-package-initializer'
+    VERSION_PATTERN = '^FHIR-Package-Initializer-([0-9])\\.([0-9]){1,2}\\.([0-9]){1,2}$'
+    JIRA_VERSION_DASH_POSITION = 3
+    JENKINS_AGENT= 'k8-backend-small'
+    GITLAB_PROJECT_ID = '2031'
+}

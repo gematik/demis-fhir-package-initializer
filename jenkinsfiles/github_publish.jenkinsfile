@@ -1,0 +1,7 @@
+@Library('gematik-jenkins-shared-library') _
+pipelineGitHubPublishSources {
+    GITHUB_PROJECT_NAME = 'demis-fhir-package-initializer'
+    GEMATIK_PROJECT_NAME = 'demis/configuration/fhir-package-initializer.git'
+    REMOTE_BRANCH = 'main'
+    FEATURE_FLAG_USE_NEW_RBAC_LAYOUT = true
+}

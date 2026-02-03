@@ -1,0 +1,6 @@
+@Library(['gematik-jenkins-shared-library', 'demis-jenkins-shared-library']) _
+
+pipelineGitHubHelmChartPublish {
+    SERVICE_NAME = 'fhir-package-initializer'
+    HELM_PACKAGES = ['fhir-package-initializer','fhir-package-initializer-istio']
+}
