@@ -1,0 +1,10 @@
+@Library(['gematik-jenkins-shared-library','demis-jenkins-shared-library']) _
+pipelineReleaseDEMIS {
+    DEFAULT_BRANCH_NAME = 'main'
+    GITLAB_PROJECT_ID = '2031'
+    IMAGE_NAME = 'fhir-package-initializer'
+    JIRA_PROJECT_ID = 'DEMIS'
+    JIRA_PROJECT_PREFIX = 'FHIR-Package-Initializer'
+    JIRA_VERSION_DASH_POSITION = 3 // the Position of the dash symbol ("-") in JIRA string
+    JENKINS_AGENT = 'k8-backend-small'
+}

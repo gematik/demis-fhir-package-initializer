@@ -1,0 +1,7 @@
+@Library('gematik-jenkins-shared-library') _
+pipelineGitHubPull {
+    GITHUB_PROJECT_NAME = 'demis-fhir-package-initializer'
+    GEMATIK_PROJECT_NAME = 'demis/configuration/fhir-package-initializer.git'
+    GITLAB_TARGET_BRANCH = 'main'
+    GITHUB_SOURCE_BRANCH = 'main'
+}
