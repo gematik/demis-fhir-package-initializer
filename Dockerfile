@@ -1,10 +1,10 @@
 # Declare Source Digest for the Base Image
-ARG SOURCE_DIGEST=4f1280cd30c9ee1242656106fb880c9d66b517657932037f2ee79cbd20cb7623
-FROM gematik1/osadl-alpine-openjdk21-jre:1.0.6@sha256:${SOURCE_DIGEST}
+ARG SOURCE_DIGEST=49026a2f80c05185ebd97d74f9296002a3cffb0bae8181cb66008480ffbcbf11
+FROM gematik1/osadl-alpine-openjdk25-jre:1.0.0@sha256:${SOURCE_DIGEST}
 
 # Redeclare Source Digest to be used in the build context
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
-ARG SOURCE_DIGEST=4f1280cd30c9ee1242656106fb880c9d66b517657932037f2ee79cbd20cb7623
+ARG SOURCE_DIGEST=49026a2f80c05185ebd97d74f9296002a3cffb0bae8181cb66008480ffbcbf11
 
 # install wget, tar and jq
 USER root
