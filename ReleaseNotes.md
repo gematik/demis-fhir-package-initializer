@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.0
+- Upgraded base-image to OSADL with java 25
+
 ## Release 1.0.9
 - Improved GitHub publish release workflow
 - Upgraded OSADL base image to 1.0.6
