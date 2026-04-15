@@ -1,16 +1,10 @@
 vulnerabilities:
-  - id: CVE-2025-69419
-    expired_at: 2026-03-01
-    statement: BaseImage CVE, not fixable
-  - id: CVE-2025-15467
-    expired_at: 2026-03-01
-    statement: BaseImage CVE, not fixable
-  - id: CVE-2026-21932
-    expired_at: 2026-03-01
-    statement: BaseImage CVE, not fixable
-  - id: CVE-2026-21945
-    expired_at: 2026-03-01
-    statement: BaseImage CVE, not fixable
+  - id: CVE-2026-28390
+    expired_at: 2026-07-01
+    statement: BaseImage OSADL-3.23.3
+  - id: CVE-2026-40200
+    expired_at: 2026-07-01
+    statement: BaseImage OSADL-3.23.3
 
 misconfigurations:
   - id: KSV011
