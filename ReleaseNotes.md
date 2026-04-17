@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.2
+- Fixed Docker Hub release pipeline to upload security artifacts again
+
 ## Release 1.1.1
 - Upgraded OSADL base image to osadl-alpine-openjdk25-jre:1.0.2
 
