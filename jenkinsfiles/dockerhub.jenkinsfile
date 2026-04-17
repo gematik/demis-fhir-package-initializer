@@ -1,10 +1,9 @@
 @Library('gematik-jenkins-shared-library') _
 pipelineDockerHubPublish {
-    DOCKER_INTERNAL_CREDENTIALS = 'demis-qs-gar-writer'
-    DOCKER_INTERNAL_REGISTRY = 'europe-west3-docker.pkg.dev/gematik-all-infra-prod'
     INTERNAL_IMAGE_NAME = "demis-qs/fhir-package-initializer"
     EXTERNAL_IMAGE_NAME = "gematik1/demis-fhir-package-initializer"
-    DOCKER_SIGNATURE_TYPE = 'OIDC-GOOGLE'
-    DOCKER_SIGNATURE_CREDENTIAL = 'sa-image-signature-demis'
     ENABLE_DOCKER_IMAGE_SIGNATURE = true
+    DOCKER_SIGNATURE_TYPE = 'OIDC-GOOGLE'
+    DOCKER_INTERNAL_REGISTRY = 'europe-west3-docker.pkg.dev/gematik-all-infra-prod'
+    DOCKER_INTERNAL_CREDENTIALS = 'sa-image-signature-demis@gematik-all-infra-prod.iam.gserviceaccount.com'
 }
