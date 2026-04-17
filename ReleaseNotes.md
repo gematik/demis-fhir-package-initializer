@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.3
+- Fixed Docker Hub release pipeline
+
 ## Release 1.1.2
 - Fixed Docker Hub release pipeline to upload security artifacts again
 
