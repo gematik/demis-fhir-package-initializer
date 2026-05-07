@@ -67,7 +67,6 @@ ensuring all required profiles are available before application startup.
 - `TARGET_DIR`: Directory where the FHIR package will be extracted. Default is `/tmp/fhir-profiles`. Creates directory with version name and subfolder `Fhir` (e.g., `/tmp/fhir-profiles/4.0.1/Fhir`).
 - `CONFIG_OPTION_PACKAGE_REGISTRY_URL`: URL of the FHIR package registry. Default is `http://package-registry.demis.svc.cluster.local`. 
 - `CONFIG_OPTION_PACKAGE_REGISTRY_PORT`: Port of the FHIR package registry. Default is `8080`.
-- `FEATURE_FLAG_PACKAGE_REGISTRY_ENABLED`: When building a Java microservice using this Docker image as the base, set this feature flag to `true` to enable FHIR package initialization during container startup. Default is `false`.
 
 ### Synchronization through signaling file
 

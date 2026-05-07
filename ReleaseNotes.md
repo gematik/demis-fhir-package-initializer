@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.6
+- Updated Readme
+
 ## Release 1.1.5
 - removed FEATURE_FLAG_PACKAGE_REGISTRY_ENABLED: packages are always loaded and initialized
 - Upgraded OSADL base image to osadl-alpine-openjdk25-jre:1.0.4
