@@ -30,53 +30,56 @@ for arg in "$@"; do
   esac
 done
 
-# initialize packages
-total_start_time=$(date +%s)
-log "Initializing FHIR packages..."
-if [ -z "$PACKAGE_NAME" ] || [ -z "$PACKAGE_VERSIONS" ]; then
-  log "Error: PACKAGE_NAME and PACKAGE_VERSIONS must be set."
-  exit 1
-fi
-
-old_ifs=$IFS
-IFS=','
-set -- $PACKAGE_VERSIONS
-IFS=$old_ifs
-version_count=$#
-
-if [ "$version_count" -eq 1 ]; then
-  if ! run_package_init "$1"; then
+if [ -n "$PACKAGE_NAME" ]; then
+  # initialize packages
+  total_start_time=$(date +%s)
+  log "Initializing FHIR packages..."
+  if [ -z "$PACKAGE_VERSIONS" ]; then
+    log "Error: PACKAGE_NAME and PACKAGE_VERSIONS must be set."
     exit 1
   fi
-else
-  log "Parallel initialization for $version_count FHIR packages..."
-  pids=""
-  for version in "$@"; do
-    (
-      run_package_init "$version"
-    ) &
-    pid=$!
-    pids="${pids}${pids:+ }$pid:$version"
-  done
 
-  parallel_failed=false
-  for entry in $pids; do
-    pid=${entry%%:*}
-    version=${entry#*:}
-    if ! wait "$pid"; then
-      log "Parallel initialization failed for VERSION=$version"
-      parallel_failed=true
+  old_ifs=$IFS
+  IFS=','
+  set -- $PACKAGE_VERSIONS
+  IFS=$old_ifs
+  version_count=$#
+
+  if [ "$version_count" -eq 1 ]; then
+    if ! run_package_init "$1"; then
+      exit 1
     fi
-  done
-  if [ "$parallel_failed" = "true" ]; then
-    exit 1
+  else
+    log "Parallel initialization for $version_count FHIR packages..."
+    pids=""
+    for version in "$@"; do
+      (
+        run_package_init "$version"
+      ) &
+      pid=$!
+      pids="${pids}${pids:+ }$pid:$version"
+    done
+
+    parallel_failed=false
+    for entry in $pids; do
+      pid=${entry%%:*}
+      version=${entry#*:}
+      if ! wait "$pid"; then
+        log "Parallel initialization failed for VERSION=$version"
+        parallel_failed=true
+      fi
+    done
+    if [ "$parallel_failed" = "true" ]; then
+      exit 1
+    fi
   fi
+
+  total_end_time=$(date +%s)
+  total_duration=$((total_end_time - total_start_time))
+  log "Finished initializing all FHIR packages in ${total_duration}s."
+else
+  log "Skipping FHIR package initialization. Parameter PACKAGE_NAME missing."
 fi
-
-total_end_time=$(date +%s)
-total_duration=$((total_end_time - total_start_time))
-log "Finished initializing all FHIR packages in ${total_duration}s."
-
 
 if [ "$MICROSERVICE_MODE" = "true" ]; then
   eval set -- $ORIGINAL_ARGS
