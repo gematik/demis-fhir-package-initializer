@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.7
+- added pass-through mode: not providing PACKAGE_NAME skips FHIR package initialization 
+
 ## Release 1.1.6
 - Updated Readme
 
