@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.8
+- upgraded base image to gematik1/osadl-alpine-openjdk25-jre:1.0.5
+
 ## Release 1.1.7
 - added pass-through mode: not providing PACKAGE_NAME skips FHIR package initialization 
 
