@@ -5,6 +5,10 @@ vulnerabilities:
   - id: CVE-2026-40200
     expired_at: 2026-07-01
     statement: BaseImage OSADL-3.23.3
+  - id: CVE-2026-2100
+    statement: Not Affected. Don't use PKCS#11.
+  - id: CVE-2026-45447
+    statement: Not Affected. Don't use PKCS#7 or SMIME.
 
 misconfigurations:
   - id: KSV011
