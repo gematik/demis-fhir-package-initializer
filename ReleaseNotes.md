@@ -2,6 +2,9 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.1.9
+- upgraded base image to gematik1/osadl-alpine-openjdk25-jre:1.0.6
+
 ## Release 1.1.8
 - upgraded base image to gematik1/osadl-alpine-openjdk25-jre:1.0.5
 
