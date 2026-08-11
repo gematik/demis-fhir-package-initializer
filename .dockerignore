@@ -1,3 +1,4 @@
 *
 !Dockerfile
 !scripts/*.sh
+!scripts/tests/*.sh
