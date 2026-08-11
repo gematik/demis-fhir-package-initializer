@@ -23,7 +23,9 @@ USER $USERID:$USERID
 # Install FHIR package initializer scripts
 COPY --chown=$USERID:$GROUPID scripts/init_snapshot_package.sh /usr/local/bin/init_snapshot_package.sh
 COPY --chown=$USERID:$GROUPID scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/init_snapshot_package.sh /usr/local/bin/entrypoint.sh
+COPY --chown=$USERID:$GROUPID scripts/logging.sh /usr/local/bin/logging.sh
+RUN chmod +x /usr/local/bin/init_snapshot_package.sh /usr/local/bin/entrypoint.sh /usr/local/bin/logging.sh
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # The STOPSIGNAL instruction sets the system call signal that will be sent to the container to exit

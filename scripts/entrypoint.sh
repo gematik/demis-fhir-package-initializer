@@ -1,21 +1,21 @@
 #!/usr/bin/env sh
 set -e
 
-log() {
-  echo "[fhir-package-initializer] $*"
-}
+# Source logging.sh for log() function
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+. "$SCRIPT_DIR/logging.sh"
 
 run_package_init() {
   version="$1"
   package_start_time=$(date +%s)
-  log "Initializing FHIR package: NAME=$PACKAGE_NAME VERSION=$version"
+  log "info" "Initializing FHIR package: NAME=$PACKAGE_NAME VERSION=$version, dependencies loading: ${CONFIG_DEPENDENCY_LOADING_ENABLED:-false}"
   if ! PACKAGE_NAME="$PACKAGE_NAME" PACKAGE_VERSION="$version" TARGET_DIR="$TARGET_DIR" /usr/local/bin/init_snapshot_package.sh; then
-    log "Error initializing package: NAME=$PACKAGE_NAME VERSION=$version"
+    log error "Error initializing package: NAME=$PACKAGE_NAME VERSION=$version"
     return 1
   fi
   package_end_time=$(date +%s)
   package_duration=$((package_end_time - package_start_time))
-  log "Finished FHIR package: NAME=$PACKAGE_NAME VERSION=$version in ${package_duration}s."
+  log info "Finished FHIR package: NAME=$PACKAGE_NAME VERSION=$version in ${package_duration}s."
 }
 
 # Determine if we are in microservice mode (Java .jar argument present)
@@ -33,9 +33,9 @@ done
 if [ -n "$PACKAGE_NAME" ]; then
   # initialize packages
   total_start_time=$(date +%s)
-  log "Initializing FHIR packages..."
+  log info "Initializing FHIR packages..."
   if [ -z "$PACKAGE_VERSIONS" ]; then
-    log "Error: PACKAGE_NAME and PACKAGE_VERSIONS must be set."
+    log error "PACKAGE_NAME and PACKAGE_VERSIONS must be set."
     exit 1
   fi
 
@@ -50,7 +50,7 @@ if [ -n "$PACKAGE_NAME" ]; then
       exit 1
     fi
   else
-    log "Parallel initialization for $version_count FHIR packages..."
+    log info "Parallel initialization for $version_count FHIR packages..."
     pids=""
     for version in "$@"; do
       (
@@ -65,7 +65,7 @@ if [ -n "$PACKAGE_NAME" ]; then
       pid=${entry%%:*}
       version=${entry#*:}
       if ! wait "$pid"; then
-        log "Parallel initialization failed for VERSION=$version"
+        log error "Parallel initialization failed for VERSION=$version"
         parallel_failed=true
       fi
     done
@@ -76,15 +76,15 @@ if [ -n "$PACKAGE_NAME" ]; then
 
   total_end_time=$(date +%s)
   total_duration=$((total_end_time - total_start_time))
-  log "Finished initializing all FHIR packages in ${total_duration}s."
+  log info "Finished initializing all FHIR packages in ${total_duration}s."
 else
-  log "Skipping FHIR package initialization. Parameter PACKAGE_NAME missing."
+  log warn "Skipping FHIR package initialization. Parameter PACKAGE_NAME missing."
 fi
 
 if [ "$MICROSERVICE_MODE" = "true" ]; then
   eval set -- $ORIGINAL_ARGS
-  log "Microservice mode detected - starting Java application with args: $*"
+  log info "Microservice mode detected - starting Java application with args: $*"
   exec java "$@"
 else
-  log "Standalone mode - exiting after initialization"
+  log info "Standalone mode - exiting after initialization"
 fi

@@ -19,6 +19,7 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#tests">Tests</a></li>
     <li><a href="#security-policy">Security Policy</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
@@ -77,13 +78,46 @@ directly.
 - `CONFIG_OPTION_PACKAGE_REGISTRY_URL`: URL of the FHIR package registry. Default is
   `http://package-registry.demis.svc.cluster.local`.
 - `CONFIG_OPTION_PACKAGE_REGISTRY_PORT`: Port of the FHIR package registry. Default is `8080`.
+- `CONFIG_DEPENDENCY_LOADING_ENABLED`: Enables recursive dependency loading from package `dependencies`. Default is
+  `false`. Dependencies are loaded only when this value is exactly `true`.
+- `DEPENDENCY_EXCLUSION`: Comma-separated package names to exclude from recursive dependency loading (for example
+  `hl7.fhir.r4.core,hl7.fhir.uv.extensions`). Applies only when `CONFIG_DEPENDENCY_LOADING_ENABLED=true`.
 
+  
 ### Synchronization through signaling file
 
 The utility always creates a signaling file named `.data-ready` in the profile directory (above the `Fhir` folder) upon
 completion of the provisioning process;
 this file is particularly relevant when using the tool as a sidecar, as it indicates that all data is ready for
 consumption.
+
+## Tests
+
+Self-tests for `init_snapshot_package.sh` are located in `scripts/tests/run_tests.sh` and are executed as a dedicated
+CI step via `TEST_SCRIPT` in `jenkinsfiles/ci.jenkinsfile`. A failing test fails the pipeline.
+
+Covered scenarios include:
+
+- simple package initialization without dependencies
+- shared/diamond dependencies loaded only once
+- dependency loading disabled via `CONFIG_DEPENDENCY_LOADING_ENABLED=false`
+- dependency exclusion via `DEPENDENCY_EXCLUSION` (including recursive dependencies)
+- conflicting versions for the same package name (fails with explicit error)
+- duplicate JSON resource filename across packages (fails with explicit error)
+- circular dependencies without hang
+- missing dependency download error handling
+- broken `package.json` parse error handling
+- `.data-ready` creation on success and temporary-directory cleanup on success/failure
+
+Run tests directly in a local Unix-like shell from the repository root:
+
+```sh
+sh scripts/tests/run_tests.sh
+```
+
+Required tools for direct local execution are:
+`sh`, `jq`, `wget`, `tar`, `find`, `xargs`, `mktemp`, `grep`, and:
+`python3`/`python` (used for the fake package registry).
 
 ### Continuous Integration and Delivery
 
