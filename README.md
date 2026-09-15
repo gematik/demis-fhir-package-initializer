@@ -82,6 +82,11 @@ directly.
   `false`. Dependencies are loaded only when this value is exactly `true`.
 - `DEPENDENCY_EXCLUSION`: Comma-separated package names to exclude from recursive dependency loading (for example
   `hl7.fhir.r4.core,hl7.fhir.uv.extensions`). Applies only when `CONFIG_DEPENDENCY_LOADING_ENABLED=true`.
+- `<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES`: Comma-separated list of additional packages to load in
+  format `<name>@<version>` (for example `DISEASE_ADDITIONAL_FHIR_PACKAGES=bar@1.2.3,kee@2.0.0`). Additional packages
+  are always loaded; their recursive dependencies are loaded only when `CONFIG_DEPENDENCY_LOADING_ENABLED=true`.
+  At most one variable matching `*_ADDITIONAL_FHIR_PACKAGES` may be set. Not allowed when `PACKAGE_VERSIONS` declares
+  more than one version; the entrypoint fails fast in that case.
 
   
 ### Synchronization through signaling file
@@ -107,6 +112,9 @@ Covered scenarios include:
 - circular dependencies without hang
 - missing dependency download error handling
 - broken `package.json` parse error handling
+- additional package loading via any env var matching `*_ADDITIONAL_FHIR_PACKAGES`
+- failing fast when more than one `*_ADDITIONAL_FHIR_PACKAGES` env var is set
+- failing fast when `*_ADDITIONAL_FHIR_PACKAGES` is combined with multiple `PACKAGE_VERSIONS` (entrypoint-level check)
 - `.data-ready` creation on success and temporary-directory cleanup on success/failure
 
 Run tests directly in a local Unix-like shell from the repository root:

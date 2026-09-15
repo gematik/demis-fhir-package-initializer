@@ -3,7 +3,7 @@ vulnerabilities:
     expired_at: 2026-09-01
     statement: BaseImage OSADL-3.23.5
   - id: CVE-2026-40200
-    expired_at: 2026-09-01
+    expired_at: 2026-10-01
     statement: BaseImage OSADL-3.23.5
   - id: CVE-2026-2100
     statement: Not Affected. Don't use PKCS#11.

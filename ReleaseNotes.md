@@ -2,6 +2,12 @@
 
 # Release notes FHIR Package Initializer
 
+## Release 1.3.0
+- added vex documents to repository
+- added support for loading of additional FHIR packages not present in the dependency tree of the main FHIR package.
+- allowed import of resource files with duplicate names, duplicates are suffixed automatically
+- upgraded base image to gematik1/osadl-alpine-openjdk25-jre:1.0.8
+
 ## Release 1.2.0
 - Added support for dependency loading
 
