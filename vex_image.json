@@ -1,0 +1,58 @@
+{
+  "bomFormat" : "CycloneDX",
+  "specVersion" : "1.5",
+  "serialNumber" : "urn:uuid:c65b8720-455f-46f2-a086-ebf670c6c249",
+  "version" : 1,
+  "metadata" : {
+    "timestamp" : "2026-08-12T07:38:05Z",
+    "tools" : [
+      {
+        "vendor" : "OWASP",
+        "name" : "Dependency-Track",
+        "version" : "4.14.2-gematik-15"
+      }
+    ],
+    "component" : {
+      "type" : "container",
+      "bom-ref" : "b5a6ffde-23a0-4662-abd3-1ccad743f38d",
+      "name" : "DEMIS FHIR package intializer (Docker Image)",
+      "version" : "1.2.1 (Main)"
+    }
+  },
+  "vulnerabilities" : [
+    {
+      "bom-ref" : "50acd5f1-0856-4a1c-b1d9-9cbd154209e5",
+      "id" : "CVE-2025-26519",
+      "source" : {
+        "name" : "NVD",
+        "url" : "https://nvd.nist.gov/"
+      },
+      "ratings" : [
+        {
+          "source" : {
+            "name" : "NVD",
+            "url" : "https://nvd.nist.gov/"
+          },
+          "score" : 7.0,
+          "severity" : "high",
+          "method" : "CVSSv31",
+          "vector" : "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+        }
+      ],
+      "cwes" : [
+        787
+      ],
+      "description" : "musl libc 0.9.13 through 1.2.5 before 1.2.6 has an out-of-bounds write vulnerability when an attacker can trigger iconv conversion of untrusted EUC-KR text to UTF-8.",
+      "published" : "2025-02-14T04:15:09Z",
+      "updated" : "2026-06-17T09:01:57Z",
+      "analysis" : {
+        "state" : "not_affected"
+      },
+      "affects" : [
+        {
+          "ref" : "b5a6ffde-23a0-4662-abd3-1ccad743f38d"
+        }
+      ]
+    }
+  ]
+}

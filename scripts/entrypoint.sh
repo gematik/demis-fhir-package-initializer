@@ -45,6 +45,11 @@ if [ -n "$PACKAGE_NAME" ]; then
   IFS=$old_ifs
   version_count=$#
 
+  if [ "$version_count" -gt 1 ] && env | grep -q '_ADDITIONAL_FHIR_PACKAGES='; then
+    log error "<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES is not allowed when multiple PACKAGE_VERSIONS are declared."
+    exit 1
+  fi
+
   if [ "$version_count" -eq 1 ]; then
     if ! run_package_init "$1"; then
       exit 1

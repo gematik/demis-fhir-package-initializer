@@ -28,6 +28,7 @@ set -u
 
 TESTS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 LOCAL_SCRIPT_UNDER_TEST="$TESTS_DIR/../init_snapshot_package.sh"
+ENTRYPOINT_SCRIPT="$TESTS_DIR/../entrypoint.sh"
 
 if [ -z "${SCRIPT_UNDER_TEST:-}" ]; then
   SCRIPT_UNDER_TEST="$LOCAL_SCRIPT_UNDER_TEST"
@@ -212,21 +213,40 @@ publish_broken_package() {
 # $1=package name $2=package version $3=target dir
 # $4=CONFIG_DEPENDENCY_LOADING_ENABLED (optional, defaults to "true")
 # $5=DEPENDENCY_EXCLUSION (optional, comma-separated package names)
+# $6=<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES value
+#    (optional, comma-separated package@version entries)
 # Sets RUN_EXIT_CODE as a side effect.
 # -----------------------------------------------------------------------
 
 run_init_script() {
-  name="$1" version="$2" target_dir="$3" dependency_loading_enabled="${4:-true}" dependency_exclusion="${5:-}"
-  PACKAGE_NAME="$name" \
-    PACKAGE_VERSION="$version" \
-    TARGET_DIR="$target_dir" \
-    CONFIG_OPTION_PACKAGE_REGISTRY_URL="http://127.0.0.1" \
-    CONFIG_OPTION_PACKAGE_REGISTRY_PORT="$REGISTRY_PORT" \
-    CONFIG_DEPENDENCY_LOADING_ENABLED="$dependency_loading_enabled" \
-    DEPENDENCY_EXCLUSION="$dependency_exclusion" \
-    MAX_TOTAL_SECONDS="$TEST_MAX_TOTAL_SECONDS" \
-    MAX_DELAY="$TEST_MAX_DELAY" \
-    sh "$SCRIPT_UNDER_TEST" >"$target_dir.log" 2>&1
+  name="$1" version="$2" target_dir="$3" dependency_loading_enabled="${4:-true}" dependency_exclusion="${5:-}" additional_packages="${6:-}"
+  domain="${name%%.*}"
+  additional_var_name="$(printf '%s' "$domain" | tr '[:lower:]' '[:upper:]' | tr -c 'A-Z0-9' '_')_ADDITIONAL_FHIR_PACKAGES"
+
+  if [ -n "$additional_packages" ]; then
+    env "$additional_var_name=$additional_packages" \
+      PACKAGE_NAME="$name" \
+      PACKAGE_VERSION="$version" \
+      TARGET_DIR="$target_dir" \
+      CONFIG_OPTION_PACKAGE_REGISTRY_URL="http://127.0.0.1" \
+      CONFIG_OPTION_PACKAGE_REGISTRY_PORT="$REGISTRY_PORT" \
+      CONFIG_DEPENDENCY_LOADING_ENABLED="$dependency_loading_enabled" \
+      DEPENDENCY_EXCLUSION="$dependency_exclusion" \
+      MAX_TOTAL_SECONDS="$TEST_MAX_TOTAL_SECONDS" \
+      MAX_DELAY="$TEST_MAX_DELAY" \
+      sh "$SCRIPT_UNDER_TEST" >"$target_dir.log" 2>&1
+  else
+    PACKAGE_NAME="$name" \
+      PACKAGE_VERSION="$version" \
+      TARGET_DIR="$target_dir" \
+      CONFIG_OPTION_PACKAGE_REGISTRY_URL="http://127.0.0.1" \
+      CONFIG_OPTION_PACKAGE_REGISTRY_PORT="$REGISTRY_PORT" \
+      CONFIG_DEPENDENCY_LOADING_ENABLED="$dependency_loading_enabled" \
+      DEPENDENCY_EXCLUSION="$dependency_exclusion" \
+      MAX_TOTAL_SECONDS="$TEST_MAX_TOTAL_SECONDS" \
+      MAX_DELAY="$TEST_MAX_DELAY" \
+      sh "$SCRIPT_UNDER_TEST" >"$target_dir.log" 2>&1
+  fi
   RUN_EXIT_CODE=$?
 }
 
@@ -364,8 +384,8 @@ test_conflicting_versions_for_same_package_fail() {
   rm -rf "$target_dir" "$target_dir.log"
 }
 
-test_duplicate_resource_filename_fails() {
-  echo "test_duplicate_resource_filename_fails"
+test_duplicate_filename_is_renamed_instead_of_overwritten() {
+  echo "test_duplicate_filename_is_renamed_instead_of_overwritten"
   publish_package_with_custom_resource "left" "1.0.0" "{}" "Patient" "Patient-duplicate.json"
   publish_package_with_custom_resource "right" "1.0.0" "{}" "Patient" "Patient-duplicate.json"
   publish_package "root" "1.0.0" '{"left":"1.0.0","right":"1.0.0"}' ""
@@ -374,17 +394,23 @@ test_duplicate_resource_filename_fails() {
   version_dir="$target_dir/1.0.0"
   run_init_script "root" "1.0.0" "$target_dir"
 
-  assert_equals 1 "$RUN_EXIT_CODE" "script fails on duplicate resource filename"
-  assert_file_contains "$target_dir.log" "Duplicate resource file detected: Patient-duplicate.json" \
-    "explicit duplicate-resource conflict is logged"
-  assert_not_exists "$version_dir/.data-ready" \
-    "ready signal file is not created on failure"
+  assert_equals 0 "$RUN_EXIT_CODE" \
+    "script succeeds instead of failing on duplicate resource filename"
+  assert_file_contains "$target_dir.log" \
+    "Duplicate resource file detected: Patient-duplicate.json already exists in" \
+    "duplicate conflict is logged as a warning"
+  assert_file_exists "$version_dir/Fhir/Patient/Patient-duplicate.json" \
+    "first package's resource keeps its original filename"
+  assert_file_exists "$version_dir/Fhir/Patient/Patient-duplicate_dup1.json" \
+    "second package's colliding resource is kept, renamed with a _dupN suffix"
+  assert_file_exists "$version_dir/.data-ready" \
+    "ready signal file is created despite the renamed duplicate"
   assert_not_exists "$version_dir/.work" \
-    "temporary work directory is cleaned up on failure"
+    "temporary work directory is cleaned up"
   assert_not_exists "$version_dir/.visited" \
-    "temporary loaded-package markers are cleaned up on failure"
+    "temporary loaded-package markers are cleaned up"
   assert_not_exists "$version_dir/.processed-by-name" \
-    "temporary package-version map is cleaned up on failure"
+    "temporary package-version map is cleaned up"
   rm -rf "$target_dir" "$target_dir.log"
 }
 
@@ -438,6 +464,198 @@ test_broken_package_json_fails_with_parse_error() {
   rm -rf "$target_dir" "$target_dir.log"
 }
 
+test_additional_packages_are_loaded() {
+  echo "test_additional_packages_are_loaded"
+  publish_package "root" "1.0.0" "{}" "Patient"
+  publish_package "bar" "1.2.3" "{}" "Observation"
+  publish_package "kee" "2.0.0" "{}" "Condition"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "false" "" "bar@1.2.3,kee@2.0.0"
+
+  assert_equals 0 "$RUN_EXIT_CODE" "script succeeds with additional packages"
+  assert_file_exists "$version_dir/Fhir/Patient/Patient-root.json" \
+    "resource from root package is merged"
+  assert_file_exists "$version_dir/Fhir/Observation/Observation-bar.json" \
+    "resource from first additional package is merged"
+  assert_file_exists "$version_dir/Fhir/Condition/Condition-kee.json" \
+    "resource from second additional package is merged"
+  assert_file_contains "$target_dir.log" "Loading additional packages from ROOT_ADDITIONAL_FHIR_PACKAGES=bar@1.2.3,kee@2.0.0." \
+    "additional package env variable usage is logged"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_additional_packages_with_whitespace_after_comma_are_loaded() {
+  echo "test_additional_packages_with_whitespace_after_comma_are_loaded"
+  publish_package "root" "1.0.0" "{}" "Patient"
+  publish_package "bar" "1.2.3" "{}" "Observation"
+  publish_package "kee" "2.0.0" "{}" "Condition"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "false" "" "bar@1.2.3,  kee@2.0.0"
+
+  assert_equals 0 "$RUN_EXIT_CODE" \
+    "script succeeds with whitespace after comma in additional packages"
+  assert_file_exists "$version_dir/Fhir/Observation/Observation-bar.json" \
+    "resource from first additional package is merged"
+  assert_file_exists "$version_dir/Fhir/Condition/Condition-kee.json" \
+    "resource from second additional package (with leading whitespace) is merged"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_additional_packages_are_loaded_recursively_when_enabled() {
+  echo "test_additional_packages_are_loaded_recursively_when_enabled"
+  publish_package "root" "1.0.0" "{}" "Patient"
+  publish_package "addon" "1.0.0" '{"addon-dep":"3.0.0"}' "Observation"
+  publish_package "addon-dep" "3.0.0" "{}" "Condition"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "true" "" "addon@1.0.0"
+
+  assert_equals 0 "$RUN_EXIT_CODE" "script succeeds with recursive additional package loading"
+  assert_file_exists "$version_dir/Fhir/Observation/Observation-addon.json" \
+    "resource from additional package is merged"
+  assert_file_exists "$version_dir/Fhir/Condition/Condition-addon-dep.json" \
+    "resource from dependency of additional package is merged when dependency loading is enabled"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_additional_package_already_in_main_tree_is_not_loaded_again() {
+  echo "test_additional_package_already_in_main_tree_is_not_loaded_again"
+  publish_package "shared" "1.0.0" "{}" "Observation"
+  publish_package "root" "1.0.0" '{"shared":"1.0.0"}' "Patient"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "true" "" "shared@1.0.0"
+  shared_load_count=$(grep -c 'Loading package: NAME=shared VERSION=1.0.0' "$target_dir.log")
+
+  assert_equals 0 "$RUN_EXIT_CODE" \
+    "script succeeds when an additional package was already loaded via the main dependency tree"
+  assert_file_exists "$version_dir/Fhir/Observation/Observation-shared.json" \
+    "resource from the shared package is merged"
+  assert_equals 1 "$shared_load_count" \
+    "package already processed in the main tree is not loaded again as an additional package"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_additional_package_conflicting_version_fails() {
+  echo "test_additional_package_conflicting_version_fails"
+  publish_package "shared" "1.0.0" "{}" "Observation"
+  publish_package "shared" "2.0.0" "{}" "Observation"
+  publish_package "root" "1.0.0" '{"shared":"1.0.0"}' "Patient"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "true" "" "shared@2.0.0"
+
+  assert_equals 1 "$RUN_EXIT_CODE" \
+    "script fails when an additional package conflicts with a version from the main dependency tree"
+  assert_file_contains "$target_dir.log" "Inconsistent package versions for shared" \
+    "explicit package-version conflict against an additional package is logged"
+  assert_not_exists "$version_dir/.data-ready" \
+    "ready signal file is not created on failure"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_invalid_additional_package_format_fails() {
+  echo "test_invalid_additional_package_format_fails"
+  publish_package "root" "1.0.0" "{}" "Patient"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  run_init_script "root" "1.0.0" "$target_dir" "true" "" "not-a-valid-entry"
+
+  assert_equals 1 "$RUN_EXIT_CODE" "script fails for invalid additional package format"
+  assert_file_contains "$target_dir.log" "Invalid additional package entry 'not-a-valid-entry'. Expected format <name>@<version>." \
+    "invalid additional package format error is logged"
+  assert_not_exists "$version_dir/.data-ready" \
+    "ready signal file is not created on failure"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_multiple_additional_package_env_vars_fail() {
+  echo "test_multiple_additional_package_env_vars_fail"
+  publish_package "root" "1.0.0" "{}" "Patient"
+
+  target_dir=$(mktemp -d)
+  version_dir="$target_dir/1.0.0"
+  env \
+    FIRST_ADDITIONAL_FHIR_PACKAGES="bar@1.2.3" \
+    SECOND_ADDITIONAL_FHIR_PACKAGES="kee@2.0.0" \
+    PACKAGE_NAME="root" \
+    PACKAGE_VERSION="1.0.0" \
+    TARGET_DIR="$target_dir" \
+    CONFIG_OPTION_PACKAGE_REGISTRY_URL="http://127.0.0.1" \
+    CONFIG_OPTION_PACKAGE_REGISTRY_PORT="$REGISTRY_PORT" \
+    CONFIG_DEPENDENCY_LOADING_ENABLED="true" \
+    DEPENDENCY_EXCLUSION="" \
+    MAX_TOTAL_SECONDS="$TEST_MAX_TOTAL_SECONDS" \
+    MAX_DELAY="$TEST_MAX_DELAY" \
+    sh "$SCRIPT_UNDER_TEST" >"$target_dir.log" 2>&1
+  RUN_EXIT_CODE=$?
+
+  assert_equals 1 "$RUN_EXIT_CODE" "script fails when multiple additional package env vars are set"
+  assert_file_contains "$target_dir.log" "Expected only one *_ADDITIONAL_FHIR_PACKAGES env var." \
+    "multiple additional package env vars are rejected"
+  assert_not_exists "$version_dir/.data-ready" \
+    "ready signal file is not created on failure"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_entrypoint_rejects_additional_packages_with_multiple_versions() {
+  echo "test_entrypoint_rejects_additional_packages_with_multiple_versions"
+
+  target_dir=$(mktemp -d)
+  PACKAGE_NAME="root" \
+    PACKAGE_VERSIONS="1.0.0,2.0.0" \
+    TARGET_DIR="$target_dir" \
+    FOO_ADDITIONAL_FHIR_PACKAGES="bar@1.2.3" \
+    sh "$ENTRYPOINT_SCRIPT" >"$target_dir.log" 2>&1
+  RUN_EXIT_CODE=$?
+
+  assert_equals 1 "$RUN_EXIT_CODE" \
+    "entrypoint fails when additional packages are combined with multiple PACKAGE_VERSIONS"
+  assert_file_contains "$target_dir.log" \
+    "<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES is not allowed when multiple PACKAGE_VERSIONS are declared." \
+    "explicit rejection reason is logged"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_entrypoint_allows_multiple_versions_without_additional_packages() {
+  echo "test_entrypoint_allows_multiple_versions_without_additional_packages"
+
+  target_dir=$(mktemp -d)
+  PACKAGE_NAME="root" \
+    PACKAGE_VERSIONS="1.0.0,2.0.0" \
+    TARGET_DIR="$target_dir" \
+    sh "$ENTRYPOINT_SCRIPT" >"$target_dir.log" 2>&1
+  RUN_EXIT_CODE=$?
+
+  assert_equals 0 "$(grep -c '<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES is not allowed' "$target_dir.log")" \
+    "multiple PACKAGE_VERSIONS without additional packages are allowed"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
+test_entrypoint_allows_additional_packages_with_single_version() {
+  echo "test_entrypoint_allows_additional_packages_with_single_version"
+
+  target_dir=$(mktemp -d)
+  PACKAGE_NAME="root" \
+    PACKAGE_VERSIONS="1.0.0" \
+    TARGET_DIR="$target_dir" \
+    FOO_ADDITIONAL_FHIR_PACKAGES="bar@1.2.3" \
+    sh "$ENTRYPOINT_SCRIPT" >"$target_dir.log" 2>&1
+  RUN_EXIT_CODE=$?
+
+   assert_equals 0 "$(grep -c '<DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES is not allowed' "$target_dir.log")" \
+    "additional packages with a single PACKAGE_VERSION are not rejected by the new rule"
+  rm -rf "$target_dir" "$target_dir.log"
+}
+
 # -----------------------------------------------------------------------
 # Main: run every test_* function above, then report.
 # -----------------------------------------------------------------------
@@ -449,10 +667,20 @@ test_shared_dependency_is_only_loaded_once
 test_dependency_loading_disabled_skips_recursive_dependencies
 test_dependency_exclusion_skips_selected_dependencies
 test_conflicting_versions_for_same_package_fail
-test_duplicate_resource_filename_fails
+test_duplicate_filename_is_renamed_instead_of_overwritten
 test_circular_dependency_does_not_hang
 test_missing_dependency_fails_with_download_error
 test_broken_package_json_fails_with_parse_error
+test_additional_packages_are_loaded
+test_additional_packages_with_whitespace_after_comma_are_loaded
+test_additional_packages_are_loaded_recursively_when_enabled
+test_additional_package_already_in_main_tree_is_not_loaded_again
+test_additional_package_conflicting_version_fails
+test_invalid_additional_package_format_fails
+test_multiple_additional_package_env_vars_fail
+test_entrypoint_rejects_additional_packages_with_multiple_versions
+test_entrypoint_allows_multiple_versions_without_additional_packages
+test_entrypoint_allows_additional_packages_with_single_version
 
 echo
 if [ "$FAILED_TESTS" -eq 0 ]; then

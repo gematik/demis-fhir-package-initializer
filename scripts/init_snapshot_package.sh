@@ -10,6 +10,8 @@
 #                     CONFIG_OPTION_PACKAGE_REGISTRY_PORT,
 #                     CONFIG_DEPENDENCY_LOADING_ENABLED (default false),
 #                     DEPENDENCY_EXCLUSION (comma-separated package names),
+#                     <DOMAIN_PREFIX>_ADDITIONAL_FHIR_PACKAGES
+#                     (comma-separated list in format name@version),
 #                     MAX_TOTAL_SECONDS (default 30), MAX_DELAY (default 5)
 #                     - used by the download retry/backoff logic
 #
@@ -72,19 +74,31 @@ read_dependencies() {
 }
 
 # Moves all resource files (*.json, excluding package.json) from a package's
-# extracted "package/" directory into the shared Fhir directory.
+# extracted "package/" directory into the shared Fhir directory. If a file of
+# the same name already exists (duplicate resource across packages), the
+# duplicate is tolerated for all resource types: the incoming file is renamed
+# with a "_dupN" suffix instead of overwriting the existing one, and the
+# collision is logged as a warning.
 merge_resources_into_fhir_dir() {
-  local src_dir="$1" file filename
+  local src_dir="$1" file filename target base suffix candidate
   for file in "$src_dir"/*.json; do
     [ -f "$file" ] || continue
     filename=$(basename "$file")
     [ "$filename" = "package.json" ] && continue
 
-    if [ -e "$FHIR_DIR/$filename" ]; then
-      log error "Duplicate resource file detected: $filename already exists in $FHIR_DIR."
-      return 1
+    target="$FHIR_DIR/$filename"
+    if [ -e "$target" ]; then
+      base="${filename%.json}"
+      suffix=1
+      candidate="${base}_dup${suffix}.json"
+      while [ -e "$FHIR_DIR/$candidate" ]; do
+        suffix=$((suffix + 1))
+        candidate="${base}_dup${suffix}.json"
+      done
+      log warn "Duplicate resource file detected: $filename already exists in $FHIR_DIR. Renaming incoming file to $candidate."
+      target="$FHIR_DIR/$candidate"
     fi
-    mv "$file" "$FHIR_DIR/$filename" || return 1
+    mv "$file" "$target" || return 1
   done
 }
 
@@ -148,6 +162,56 @@ load_dependencies() {
   done <<EOF
 $deps
 EOF
+}
+
+
+# Finds env vars matching *_ADDITIONAL_FHIR_PACKAGES and prints the variable
+# name when exactly one match exists.
+resolve_additional_packages_var_name() {
+  local vars count
+
+  vars=$(env | grep '_ADDITIONAL_FHIR_PACKAGES=' | cut -d= -f1)
+  [ -n "$vars" ] || return 0
+
+  count=$(printf '%s\n' "$vars" | grep -c '.')
+  [ "$count" -eq 1 ] || return 1
+
+  printf '%s\n' "$vars"
+}
+
+# Loads additional packages from a comma-separated list:
+#   package-a@1.2.3,package-b@4.5.6
+load_additional_packages() {
+  local additional_packages="$1" old_ifs entry additional_name additional_version
+
+  [ -n "$additional_packages" ] || return 0
+
+  old_ifs=$IFS
+  IFS=','
+  set -- $additional_packages
+  IFS=$old_ifs
+
+  for entry in "$@"; do
+    # Trim leading/trailing whitespace so entries like "a@1, b@2" parse correctly.
+    entry="${entry#"${entry%%[![:space:]]*}"}"
+    entry="${entry%"${entry##*[![:space:]]}"}"
+    [ -n "$entry" ] || continue
+    case "$entry" in
+      *@*)
+        additional_name=${entry%@*}
+        additional_version=${entry#*@}
+        if [ -z "$additional_name" ] || [ -z "$additional_version" ]; then
+          log error "Invalid additional package entry '$entry'. Expected format <name>@<version>."
+          return 1
+        fi
+        load_package "$additional_name" "$additional_version" || return 1
+        ;;
+      *)
+        log error "Invalid additional package entry '$entry'. Expected format <name>@<version>."
+        return 1
+        ;;
+    esac
+  done
 }
 
 
@@ -280,6 +344,14 @@ CONFIG_OPTION_PACKAGE_REGISTRY_URL="${CONFIG_OPTION_PACKAGE_REGISTRY_URL:-http:/
 CONFIG_OPTION_PACKAGE_REGISTRY_PORT="${CONFIG_OPTION_PACKAGE_REGISTRY_PORT:-8080}"
 CONFIG_DEPENDENCY_LOADING_ENABLED="${CONFIG_DEPENDENCY_LOADING_ENABLED:-false}"
 DEPENDENCY_EXCLUSION="${DEPENDENCY_EXCLUSION:-}"
+ADDITIONAL_FHIR_PACKAGES=""
+if ! ADDITIONAL_PACKAGES_VAR_NAME="$(resolve_additional_packages_var_name)"; then
+  log error "Expected only one *_ADDITIONAL_FHIR_PACKAGES env var."
+  exit 1
+fi
+if [ -n "$ADDITIONAL_PACKAGES_VAR_NAME" ]; then
+  eval "ADDITIONAL_FHIR_PACKAGES=\${$ADDITIONAL_PACKAGES_VAR_NAME:-}"
+fi
 
 FHIR_DIR="$TARGET_DIR/Fhir"
 WORK_DIR="$TARGET_DIR/.work"
@@ -299,6 +371,17 @@ if ! load_package "$PACKAGE_NAME" "$PACKAGE_VERSION"; then
   rm -f "$TARGET_DIR/.data-ready"
   exit 1
 fi
+
+if [ -n "$ADDITIONAL_FHIR_PACKAGES" ]; then
+  log info "Loading additional packages from $ADDITIONAL_PACKAGES_VAR_NAME=$ADDITIONAL_FHIR_PACKAGES."
+  if ! load_additional_packages "$ADDITIONAL_FHIR_PACKAGES"; then
+    log error "Package initialization failed for additional packages in $ADDITIONAL_PACKAGES_VAR_NAME."
+    rm -rf "$FHIR_DIR" "$WORK_DIR" "$VISITED_DIR" "$PROCESSED_BY_NAME_DIR"
+    rm -f "$TARGET_DIR/.data-ready"
+    exit 1
+  fi
+fi
+
 rm -rf "$WORK_DIR" "$VISITED_DIR" "$PROCESSED_BY_NAME_DIR"
 
 if [ "$CONFIG_DEPENDENCY_LOADING_ENABLED" = "true" ]; then
