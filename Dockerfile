@@ -1,6 +1,6 @@
 # Declare Source Digest for the Base Image
-ARG SOURCE_DIGEST=sha256:b562d62fdbfc77fa00bfc98b5bde97cc6add0e0c32da351b3acb97ffef1adce3
-FROM gematik1/osadl-alpine-openjdk25-jre:1.1.1@${SOURCE_DIGEST}
+ARG SOURCE_DIGEST=sha256:32f18664b9f0966a20952e3e1261130a9c79e93a1e455e9069a3513819f61d20
+FROM gematik1/osadl-alpine-openjdk25-jre:1.1.2@${SOURCE_DIGEST}
 
 # Redeclare Source Digest to be used in the build context
 # https://docs.docker.com/engine/reference/builder/#understand-how-arg-and-from-interact
